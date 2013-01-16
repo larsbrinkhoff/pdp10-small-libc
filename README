@@ -1,0 +1,4 @@
+Small C library for the PDP-10.
+
+The .s files are in TOPS-20 MACRO syntax.  The .o and .a files are in
+LINK .REL format.

@@ -1,0 +1,6 @@
+	TITLE	one
+
+	ENTRY	%ONE
+%ONE==1
+
+	END
