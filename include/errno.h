@@ -1,0 +1,49 @@
+extern int errno;
+
+/* POSIX error codes.  */
+#define E2BIG		 1
+#define EACCES		 2
+#define EAGAIN		 3
+#define EBADF		 4
+#define EBADMSG		 5
+#define EBUSY		 6
+#define ECANCELED	 7
+#define ECHILD		 8
+#define EDEADLK		 9
+#define EDOM		10
+#define EEXIST		11
+#define EFAULT		12
+#define EFBIG		13
+#define EINPROGRESS	14
+#define EINTR		15
+#define EINVAL		16
+#define EIO		17
+#define EISDIR		18
+#define EMFILE		19
+#define EMLINK		20
+#define EMSGSIZE	21
+#define ENAMETOOLONG	22
+#define ENFILE		23
+#define ENODEV		24
+#define ENOENT		25
+#define ENOEXEC		26
+#define ENOLCK		27
+#define ENOMEM		28
+#define ENOSPC		29
+#define ENOSYS		30
+#define ENOTDIR		31
+#define ENOTEMPTY	32
+#define ENOTSUP		33
+#define ENOTTY		23
+#define ENXIO		24
+#define EPERM		25
+#define EPIPE		26
+#define ERANGE		27
+#define EROFS		28
+#define ESPIPE		29
+#define ESRCH		30
+#define ETIMEDOUT	31
+#define EXDEV		32
+
+/* Other common Unix erro codes.  */
+#define EDQUOT		33
