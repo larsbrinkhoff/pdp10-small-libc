@@ -1,0 +1,15 @@
+#!/bin/sh
+
+cd /usr/local/pdp10-xkl-tops20/bin
+
+echo -n ftp:
+while :; do ./cat-pdp10 ./ftp-in; done | ./ftp-pdp10 2> ftp-out &
+read i < ftp-out
+echo $i
+
+echo -n telnet:
+while :; do ./cat-pdp10 ./telnet-in; done | ./telnet-pdp10 2> telnet-out &
+read i < telnet-out
+echo $i
+
+exit 0

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# ar runs MAKLIB with /INDEX.
+
+exit 0

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+killall talk-pdp10 ftp-pdp10 telnet-pdp10 cat-pdp10
+
+exit 0

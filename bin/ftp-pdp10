@@ -1,0 +1,52 @@
+#!/usr/bin/expect
+
+source ../params.exp
+
+log_user 1
+spawn ftp $pdp10_host
+expect {
+    "): " { }
+    "Connection refused" {
+	send_error "Connection refused"
+	exit 1
+    }
+}
+send "$pdp10_user\r"
+expect "Password:"
+send "$pdp10_password\r"
+expect "ftp> "
+send "cd $pdp10_dir\r"
+
+set result "ok\n"
+expect {
+    -timeout -1 "ftp> " {	
+#	send_user "\n{{{prompt}}}\n"
+	send_error $result
+	expect_user {
+	    -timeout 600 -re "(.*)\n" {
+#		send_user "\n{{{command = $expect_out(1,string)}}}\n"
+		send "$expect_out(1,string)\r"
+		expect "\n"
+		set result "ok\n"
+	    } timeout {
+#		send_user "\n{{{timeout}}}\n"
+		send "quote noop\r"
+		expect "ftp> "
+		exp_continue
+	    }
+	}
+	exp_continue
+    } "No such file or directory" {
+#	send_user "\n{{{no such file}}}\n"
+	set result "No such file or directory\n"
+	exp_continue
+    } -re "\n550 (.*)\n" {
+#	send_user "\n{{{550}}}\n"
+	set result "$expect_out(1,string)\n"
+	exp_continue
+    } -re "\n\\?(.*)\n" {
+#	send_user "\n{{{?}}}\n"
+	set result "$expect_out(1,string)\n"
+	exp_continue
+    }
+}

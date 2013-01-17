@@ -1,0 +1,6 @@
+set pdp10_host "192.168.1.4"
+set pdp10_user "lars"
+set pdp10_password "..."
+set pdp10_dir "<lars.tmp>"
+#set pdp10_dir_passwd
+set pdp10_prefix ""

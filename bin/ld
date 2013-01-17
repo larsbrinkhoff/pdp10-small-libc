@@ -1,0 +1,246 @@
+#!/bin/sh
+
+HERE=/usr/local/pdp10-xkl-tops20/bin
+. $HERE/lib.sh
+
+lib="<lars.gcc>"
+#lib="<lars.glibc>"
+
+die ()
+{
+    rm -f $HERE/obj.del
+
+    case "$TESTSUITE$1" in
+    true0)
+	;;
+    *)
+	test "x$SAVE_EXE" != xyes && DELETE "$exe"
+	;;
+    esac
+
+    set $objs
+    while test "x$1" != x; do
+	tmp=`basename $1 .o`
+	tmp=`sixchar "$tmp"`.rel
+	case "$tmp" in
+	crt0.rel)
+	    ;;
+	*)
+	    DELETE "$tmp"
+	    ;;
+	esac
+	shift
+    done
+
+    exit $1
+}
+
+usage ()
+{
+    echo "Usage: $0 <options> <objfiles>"
+    echo 'Where <options> can be one of:'
+    echo '  -o<executable>'
+    echo '  -l<library>'
+    echo '  -L<library search path>'
+}
+
+trap '$HERE/telnet-do ""; die 1' 1 2 3 15
+
+n="$#"
+
+if test "$n" = 0; then
+    usage
+    exit 1
+fi
+
+objs=""
+libs=""
+libdirs=""
+out=""
+while test "$n" != 1; do
+    case "x$1" in
+    x-o)
+	shift
+	out=`absolute "$1"`
+	;;
+    x-o*)
+	tmp=`echo "$1" | sed 's/^-o//'`
+	out=`absolute "$tmp"`
+	;;
+    x-r)
+	relocatable=yes
+	;;
+    x-L)
+	shift
+	libdirs="$libdirs $1"
+	;;
+    x-L*)
+	tmp=`echo "$1" | sed 's/^-L//'`
+	libdirs="$libdirs $tmp"
+	;;
+    x-l)
+	shift
+	libs="$libs $1"
+	;;
+    x-l*)
+	tmp=`echo "$1" | sed 's/^-l//'`
+	libs="$libs $tmp"
+	;;
+    x-*)
+	echo Unknown option: $1
+	exit 1
+	;;
+    *)
+	objs="$objs `absolute $1`"
+	;;
+    esac
+    shift
+    n=`expr $n - 1`
+done
+
+case "x$libdirs" in
+*mregparm=0*)
+    regparm=0 ;;
+*)
+    regparm='' ;;
+esac
+
+if test $relocatable; then
+    if $HERE/ar ld-r $out $objs; then exit 0; else exit 1; fi
+fi
+
+if test "x$objs" = x; then
+    usage
+    exit 1
+fi
+
+if test "x$out" = x; then
+    out="a.out"
+fi
+
+libpaths=""
+set $libdirs
+while test "x$1" != x; do
+    libpaths="$libpaths `echo $libs | tr ' ' '\n' | while read i; do
+	if test -r "$1/lib$i.a"; then
+	    absolute "$1/lib$i.a"
+	fi
+    done`"
+    shift
+done
+
+if $HERE/ftp-do "image"; then :; else die 1; fi;
+
+if $TESTSUITE; then :; else
+    set $objs
+    while test "x$1" != x; do
+	tmp=`basename $1 .o`
+	tmp=`sixchar $tmp`.rel
+	case "$tmp" in
+	crt0.rel)
+	    ;;
+	*)
+	    if $HERE/ftp-do "put $1 $tmp"; then :; else die 1; fi;;
+	esac
+	shift
+    done
+
+    set $libpaths
+    while test "x$1" != x; do
+	tmp=`basename $1 .a`.rel
+	case "$tmp" in
+	crt0.rel | libc.rel | libm.rel | libgcc.rel)
+	    ;;
+	*)
+	    if $HERE/ftp-do "put $1 $tmp"; then :; else die 1; fi;;
+	esac
+	shift
+    done
+fi
+
+$HERE/telnet-do "link"
+$HERE/telnet-do "/nojobdat/noinitial/set:.text:1000100/set:.rodat:1200000/set:.data:1400000/set:.bss:1600000/set:.stack:2000000/set:.heap:5000000/limit:.text:.rodat/limit:.rodat:.data/limit:.data:.bss/limit:.bss:.stack/limit:.stack:3000000"
+$HERE/telnet-do "/set:.dbabb:3000000/set:.dbinf:3100000/set:.dblin:4000000/set:.dbpub:4100000/set:.dbarn:4200000/set:.dbstr:4300000/set:.dbmac:4400000/set:.dbrng:4500000/set:.dbloc:4600000"
+
+set $objs
+crt0=""
+while test "x$1" != x; do
+    tmp=`basename "$1" .o`
+    tmp=`sixchar "$tmp"`
+    case "$tmp" in
+    crt0)
+	crt0="${lib}crt0${regparm}.rel";;
+#	crt0="${lib}crt0s.rel";;
+    *)
+	if $HERE/telnet-do "$crt0"; then :; else die 1; fi
+	if $HERE/telnet-do "$tmp.rel"; then :; else die 1; fi;;
+    esac
+    shift
+done
+
+set $libpaths
+libc=no
+libgcc=no
+while test "x$1" != x; do
+    tmp=`basename "$1" .a`
+    case "$tmp" in
+    libc)
+	libc=yes;;
+    libgcc)
+	libgcc=yes;;
+    libm)
+	if $HERE/telnet-do "/search ${lib}libm${regparm}.rel"; then :; else die 1; fi;;
+    *)
+	if $HERE/telnet-do "/search $tmp.rel"; then :; else die 1; fi;;
+    esac
+    shift
+done
+case "$libc$libgcc" in
+yesyes)
+    if $HERE/telnet-do "/search ${lib}libc${regparm}.rel,${lib}libgcc${regparm}.rel"; then :; else die 1; fi;;
+yesno)
+    if $HERE/telnet-do "/search ${lib}libc${regparm}.rel"; then :; else die 1; fi;;
+noyes)
+    if $HERE/telnet-do "/search ${lib}libgcc${regparm}.rel"; then :; else die 1; fi;;
+esac
+
+#if $HERE/telnet-do "/count"; then :; else die 1; fi;
+
+exe=tmp.exe
+if $HERE/telnet-do "$exe/save/go"; then :; else die 1; fi;
+
+if $TESTSUITE; then
+    cat > "$out" <<EOF
+#!/bin/sh
+#make this file look different: $$
+result=1
+if $HERE/telnet-do "run $exe"; then result=0; fi
+test "x$SAVE_EXE" != xyes && $HERE/telnet-do "del $exe"
+$HERE/telnet-do "expunge"
+exit \$result
+EOF
+else
+    if $HERE/ftp-do "get $exe $out"; then :; else die 1; fi;
+
+    mv "$out" /tmp/ld-$$.tmp
+    cat > "$out" <<'EOF'
+#!/bin/sh
+HERE=/usr/local/pdp10-xkl-tops20/bin
+tmp=/tmp/tmp.exe
+result=1
+dd if=$0 of=$tmp bs=289 skip=1 2>/dev/null
+if $HERE/ftp-do "image" &&
+   $HERE/ftp-do "put $tmp tmp.exe"
+then
+    if $HERE/telnet-do "run tmp.exe"; then result=0; fi
+    $HERE/telnet-do "del tmp.exe"
+fi
+exit $result
+EOF
+
+    cat /tmp/ld-$$.tmp >> "$out"
+    rm -f /tmp/ld-$$.tmp
+fi
+
+chmod a+x "$out"
+die 0

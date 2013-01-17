@@ -1,0 +1,45 @@
+#!/usr/bin/expect -f
+
+source ../params.exp
+
+#exp_internal 1
+log_user 1
+spawn telnet $pdp10_host
+expect {
+    "@" { }
+    "Connection refused" {
+	send_error "Connection refused\n"
+	exit 1
+    }
+}
+send "login $pdp10_user $pdp10_password\r"
+expect "@"
+send "set term no pause end\r"
+expect "@"
+send "ena\r"
+expect -re "(\\$|\\!)"
+send "conn $pdp10_dir\r"
+if [info exists pdp10_dir_passwd] {
+    expect "Password:"
+    send "$pdp10_dir_passwd\r"
+}
+
+set prompt "\n($pdp10_prefix\\$|$pdp10_prefix\\@|\\*|$pdp10_prefix\\!)"
+
+set result "ok\n"
+expect {
+    -timeout 200 -re $prompt {
+	send_error $result
+	expect_user -timeout -1 -re "(.*)\n"
+	send "$expect_out(1,string)\r"
+	set result "ok\n"
+	exp_continue
+    } -re {\n(\?|%)([^\r]*)\r} {
+	set result "$expect_out(2,string)\n"
+	exp_continue
+    } timeout {
+	set result "timeout\n"
+	send ""
+	exp_continue
+    }
+}

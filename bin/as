@@ -1,0 +1,99 @@
+#!/bin/sh
+
+HERE=/usr/local/pdp10-xkl-tops20/bin
+. $HERE/lib.sh
+
+die ()
+{
+    case "$TESTSUITE$1" in
+    true0)
+	DELETE "$x.mac"
+	echo "$y.rel" > $HERE/obj.del
+	;;
+    *)
+	DELETE "$x.mac,$x.rel"
+	;;
+    esac
+    EXPUNGE
+    exit $1
+}
+
+usage ()
+{
+    echo "Usage: $0 <options> <asmfile>"
+    echo 'Where <options> can be one of:'
+    echo '  -o <objfile>'
+}
+
+# Remove junk files.
+test -r $HERE/obj.del && DELETE `cat $HERE/obj.del` > /dev/null 2>&1
+rm -f $HERE/obj.del
+
+trap 'die 1' 1 2 3 15
+
+n="$#"
+if test "$n" = 0; then
+    usage
+    exit 1
+fi
+
+# Parse command line.
+in=""
+out=""
+while test "$n" != 1; do
+    case "x$1" in
+    x-o)
+	shift
+	case "x$1" in
+	x/*)
+	    out="$1";;
+	*)
+	    out="$PWD/$1";;
+	esac
+	;;
+    x-*)
+	echo Unknown option: $1
+	exit 1
+	;;
+    *)
+	in="$1"
+	;;
+    esac
+    shift
+    n=`expr $n - 1`
+done
+
+if test "x$in" = x; then
+    usage
+    exit 1
+fi
+
+if test "x$out" = x; then
+    usage
+    exit 1
+fi
+
+# Remove junk lines left by the pre-processor.
+if grep -v '^#' "$in" > /tmp/as-$$.tmp; then :; else exit 1; fi
+
+x=`basename "$in" .s`
+x=`sixchar "$x"`
+
+if $HERE/ftp-do		"ascii";			then :; else die 1; fi
+echo $x.mac >> $HERE/obj.del
+if $HERE/ftp-do		"put /tmp/as-$$.tmp $x.mac";	then :; else die 1; fi
+rm /tmp/as-$$.tmp
+echo $x.rel >> $HERE/obj.del
+if $HERE/telnet-do	"compile $x.mac";		then :; else die 1; fi
+
+if $TESTSUITE; then
+    y=`basename "$out" .o`
+    y=`sixchar "$y"`
+    if $HERE/telnet-do	"rename $x.rel $y.rel";		then :; else die 1; fi
+    touch "$out"
+else
+    if $HERE/ftp-do	"image";			then :; else die 1; fi
+    if $HERE/ftp-do	"get $x.rel $out";		then :; else die 1; fi
+fi
+
+die 0

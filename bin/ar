@@ -1,0 +1,80 @@
+#!/bin/sh
+
+HERE=/usr/local/pdp10-xkl-tops20/bin
+. $HERE/lib.sh
+
+die ()
+{
+    if test "x$SAVE_LIBC" = xyes; then
+	$HERE/telnet-do "copy $lib.rel <lars.glibc>"
+	EXPUNGE "<lars.glibc>"
+    fi
+
+    DELETE "$lib.rel";
+    set $files
+    while test "x$1" != x; do
+	tmp=`basename $1 .o`.rel
+	DELETE "$tmp";
+	shift
+    done
+    EXPUNGE
+    exit $1
+}
+
+case "x$1" in
+xrc | xcr | xcruv)
+    ;;
+xld-r)
+    relocatable=yes
+    ;;
+*)
+    echo "Usage: $0 rc <library> <objfiles>"
+    exit 1
+    ;;
+esac
+
+out=`absolute "$2"`
+if test $relocatable; then
+    lib=`basename $out .o`
+else
+    lib=`basename $out .a`
+fi
+shift 2
+files="$@"
+
+set $files
+while test "x$1" != x; do
+    tmp=`basename $1 .o`.rel
+    foo=`absolute "$1"`
+#   echo uploading $foo
+    if $HERE/ftp-do "image"; then :; else die 1; fi;
+    if $HERE/ftp-do "put $foo $tmp"; then :; else die 1; fi;
+    shift
+done
+
+set $files
+if $HERE/telnet-do "maklib"; then :; else die 1; fi;
+t1=`basename $1 .o`
+t2=`basename $2 .o`
+if $HERE/telnet-do "$lib=$t1,$t2/a"; then :; else die 1; fi;
+shift 2
+while test "x$1" != x; do
+    tmp=`basename $1 .o`
+#    if $HERE/telnet-do "$lib=$lib,$tmp/a"; then :; else die 1; fi;
+    if $HERE/telnet-do "$lib=$lib,$tmp/a/exit"; then :; else die 1; fi;
+    if $HERE/telnet-do "expunge"; then :; else die 1; fi;
+    if $HERE/telnet-do "maklib"; then :; else die 1; fi;
+    shift
+done
+if test $relocatable; then
+    if $HERE/telnet-do "/exit"; then :; else die 1; fi;
+else
+    #if $HERE/telnet-do "$lib=$lib/index/nolocals/exit"; then :; else die 1; fi;
+    if $HERE/telnet-do "$lib=$lib/index/exit"; then :; else die 1; fi;
+fi
+
+if $HERE/telnet-do "expunge"; then :; else die 1; fi;
+
+if $HERE/ftp-do "get $lib.rel $out"; then :; else die 1; fi;
+
+die 0

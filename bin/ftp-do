@@ -1,0 +1,11 @@
+#!/bin/sh
+
+HERE=/usr/local/pdp10-xkl-tops20/bin
+
+echo "$1" > $HERE/ftp-in
+read i < $HERE/ftp-out
+case "$i" in
+ok) exit 0;;
+*)  echo $i 2>&1
+    exit 1;;
+esac
