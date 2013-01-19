@@ -1,4 +1,15 @@
-Small C library for the PDP-10.
+Small C library for the PDP-10 architecture and TOPS-20 operating
+system.
 
-The .s files are in TOPS-20 MACRO syntax.  The .o and .a files are in
-LINK .REL format.
+The bin directory contains scripts for simulating ar, as, ld, and
+ranlib by using ftp and telnet to call MAKLIB, MACRO, and LINK on a
+TOPS-20 machine.  Host, user, password, and working directory should
+be entered into the params.exp file.
+
+The include directory has all public header files.
+
+The src directory contains the library implementation.  The .c files
+are written to be compiled with the PDP-10 target for GCC which can be
+found on http://pdp10.nocrew.org/gcc/.  The .s files are in TOPS-20
+MACRO syntax.  The pre-compiled .o and .a files are in LINK .REL
+format.
